@@ -1,0 +1,49 @@
+name: Bug Report
+description: Something is broken or behaves unexpectedly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for taking the time to report a bug!"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      placeholder: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `./mvnw spring-boot:run`
+        2. Call `POST /api/v1/users` with body ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: input
+    id: java_version
+    attributes:
+      label: Java version
+      placeholder: "e.g. 21.0.3"
+    validations:
+      required: true
+
+  - type: input
+    id: spring_version
+    attributes:
+      label: Spring Boot version
+      placeholder: "e.g. 3.2.5"
+    validations:
+      required: true

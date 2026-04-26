@@ -1,0 +1,29 @@
+name: Feature / Best-Practice Request
+description: Suggest a new example or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for suggesting an improvement!"
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      placeholder: "e.g. There is no example showing how to use Spring Retry..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      placeholder: Describe the example or change you'd like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: Any other approaches you thought about?

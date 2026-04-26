@@ -1,0 +1,36 @@
+# Production profile — activate with: --spring.profiles.active=prod
+# Secrets (DB password, etc.) must be injected via environment variables, not hardcoded here.
+
+spring:
+  datasource:
+    # Override these via environment variables:
+    # SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      # Never use create/create-drop in production; run Flyway or Liquibase migrations instead
+      ddl-auto: validate
+    show-sql: false
+
+  # Disable H2 console in production
+  h2:
+    console:
+      enabled: false
+
+management:
+  endpoint:
+    health:
+      # Hide implementation details from unauthenticated callers
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+logging:
+  level:
+    root: WARN
+    com.example.bestpractices: INFO

@@ -1,0 +1,66 @@
+# Best practices demonstrated:
+# - Use application.yml over application.properties for hierarchical readability
+# - Keep this file as the base config with safe defaults for local development
+# - Use Spring profiles (application-dev.yml, application-prod.yml) for env-specific overrides
+# - Never commit secrets here; use environment variables or a secrets manager
+# - All configurable values are documented with inline comments
+
+spring:
+  application:
+    name: spring-boot-best-practices
+
+  # --- Data Source ---
+  datasource:
+    # H2 in-memory DB for easy local development; override to Postgres/MySQL in prod profile
+    url: jdbc:h2:mem:bestpractices;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  # --- JPA ---
+  jpa:
+    hibernate:
+      # "validate" in prod to catch schema drift early; "create-drop" acceptable in dev only
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        # Use UTC to avoid timezone ambiguity with Instant columns
+        jdbc:
+          time_zone: UTC
+
+  # --- H2 Console (dev only; disabled in prod profile) ---
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# --- Actuator ---
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, caches
+  endpoint:
+    health:
+      show-details: when_authorized
+  info:
+    env:
+      enabled: true
+
+# --- App info (exposed via /actuator/info) ---
+info:
+  app:
+    name: ${spring.application.name}
+    version: "@project.version@"
+    description: Spring Boot best practices reference
+
+# --- Logging ---
+logging:
+  pattern:
+    # Include correlationId from MDC in every log line
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
+  level:
+    root: INFO
+    com.example.bestpractices: DEBUG

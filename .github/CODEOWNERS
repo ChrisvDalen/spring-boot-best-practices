@@ -1,0 +1,6 @@
+# Global owner — reviewed on every pull request
+* @ChrisvDalen
+
+# Security-sensitive files require explicit sign-off
+src/main/java/com/example/bestpractices/security/ @ChrisvDalen
+SECURITY.md @ChrisvDalen
