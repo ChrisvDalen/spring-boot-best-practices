@@ -1,5 +1,6 @@
 # Dev profile — activate with: --spring.profiles.active=dev
-# Overrides that make local development faster and more transparent
+# Overrides that make local development faster and more transparent.
+# Run the full infrastructure stack with: docker-compose --profile dev up
 
 spring:
   jpa:
@@ -9,9 +10,26 @@ spring:
     console:
       enabled: true
 
+  # In dev, Flyway's validate may fail on first run against a new H2 DB — use create-drop
+  # when not running the full Postgres stack
+  flyway:
+    enabled: true   # Flyway still runs using the H2-compatible migrations
+
+management:
+  tracing:
+    # Trace every request locally for full visibility
+    sampling:
+      probability: 1.0
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
 logging:
   level:
     com.example.bestpractices: DEBUG
     org.springframework.security: DEBUG
+    org.springframework.amqp: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
+    io.github.resilience4j: DEBUG
