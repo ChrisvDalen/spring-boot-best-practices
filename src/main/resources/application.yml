@@ -1,9 +1,10 @@
 # Best practices demonstrated:
-# - Use application.yml over application.properties for hierarchical readability
-# - Keep this file as the base config with safe defaults for local development
-# - Use Spring profiles (application-dev.yml, application-prod.yml) for env-specific overrides
-# - Never commit secrets here; use environment variables or a secrets manager
-# - All configurable values are documented with inline comments
+# - application.yml is the single base config; profile files only override what differs
+# - All external service addresses default to localhost so a developer can run services
+#   via docker-compose without setting any environment variables
+# - Secrets (passwords, API keys) are never committed; they arrive via env vars or
+#   a secrets manager at deploy time
+# - Resilience4j, tracing, and outbox config are all externalised — no magic numbers in code
 
 spring:
   application:
@@ -11,8 +12,7 @@ spring:
 
   # --- Data Source ---
   datasource:
-    # H2 in-memory DB for easy local development; override to Postgres/MySQL in prod profile
-    url: jdbc:h2:mem:bestpractices;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:h2:mem:bestpractices;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
@@ -20,15 +20,20 @@ spring:
   # --- JPA ---
   jpa:
     hibernate:
-      # "validate" in prod to catch schema drift early; "create-drop" acceptable in dev only
-      ddl-auto: create-drop
+      # Flyway owns schema creation; Hibernate only validates against it
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         format_sql: true
-        # Use UTC to avoid timezone ambiguity with Instant columns
         jdbc:
           time_zone: UTC
+
+  # --- Flyway ---
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true   # safe for first-run against a pre-existing schema
 
   # --- H2 Console (dev only; disabled in prod profile) ---
   h2:
@@ -36,31 +41,120 @@ spring:
       enabled: true
       path: /h2-console
 
+  # --- RabbitMQ ---
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: /
+    # Publisher confirms allow detecting messages that the broker didn't ack
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1s
+          max-attempts: 3
+          multiplier: 2.0
+
+  # --- Redis ---
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
 # --- Actuator ---
 management:
   endpoints:
     web:
       exposure:
-        include: health, info, metrics, caches
+        # prometheus endpoint is consumed by Prometheus scraper
+        include: health, info, metrics, caches, prometheus, loggers
   endpoint:
     health:
       show-details: when_authorized
-  info:
-    env:
+      show-components: when_authorized
+    prometheus:
       enabled: true
+  metrics:
+    tags:
+      # Tag every metric with the application name for multi-service Grafana dashboards
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        # Enable histograms for Prometheus-native percentile calculation
+        http.server.requests: true
+  tracing:
+    # Sample 10 % of requests in production; override to 1.0 locally for full traces
+    sampling:
+      probability: ${TRACING_SAMPLE_RATE:0.1}
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 # --- App info (exposed via /actuator/info) ---
 info:
   app:
     name: ${spring.application.name}
     version: "@project.version@"
-    description: Spring Boot best practices reference
+    description: Overkill Spring Boot enterprise reference
 
 # --- Logging ---
 logging:
   pattern:
-    # Include correlationId from MDC in every log line
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{correlationId}] [traceId=%X{traceId}] %-5level %logger{36} - %msg%n"
   level:
     root: INFO
     com.example.bestpractices: DEBUG
+    org.springframework.amqp: INFO
+
+# --- Resilience4j ---
+resilience4j:
+  circuitbreaker:
+    instances:
+      emailService:
+        # Open circuit after 50 % of the last 10 calls fail
+        failure-rate-threshold: 50
+        # Stay open for 30 s before probing recovery with 3 test calls
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+  retry:
+    instances:
+      emailService:
+        max-attempts: 3
+        wait-duration: 500ms
+        # Exponential back-off: 500 ms → 1 s → 2 s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+  timelimiter:
+    instances:
+      emailService:
+        timeout-duration: 3s
+        cancel-running-future: true
+  ratelimiter:
+    instances:
+      userApi:
+        # 100 requests per second per instance; reduce under load testing
+        limit-for-period: 100
+        limit-refresh-period: 1s
+        timeout-duration: 100ms
+        register-health-indicator: true
+
+# --- Application-specific ---
+app:
+  outbox:
+    # How often the OutboxEventProcessor polls for unsent events (milliseconds)
+    poll-interval-ms: 1000
+    enabled: true

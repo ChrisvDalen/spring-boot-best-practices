@@ -32,13 +32,15 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 // Read operations are open; writes require authentication
                 .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
                 .anyRequest().authenticated()
             )
+            // HTTP Basic for simplicity — replace with JWT filter in a real application
+            .httpBasic(org.springframework.security.config.Customizer.withDefaults())
             // Allow H2 console frames (dev only — remove in production)
             .headers(h -> h.frameOptions(fo -> fo.sameOrigin()));
 

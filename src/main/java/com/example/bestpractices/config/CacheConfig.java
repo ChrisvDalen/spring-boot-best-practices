@@ -1,32 +1,55 @@
 package com.example.bestpractices.config;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.Map;
 
 /**
  * Best practices demonstrated:
- * - Use Caffeine (in-process) for single-instance apps; swap for Redis when scaling horizontally
- * - Always set a TTL — an unbounded cache is a memory leak waiting to happen
- * - Set maximumSize to cap memory usage under load
- * - Define cache names as constants so typos cause compile errors, not silent cache misses
+ * - Redis replaces Caffeine for distributed caching — cache is shared across all
+ *   nodes in a horizontally scaled deployment; Caffeine is limited to a single JVM
+ * - Per-cache TTLs: user data cached for 10 min, aggregates for 5 min
+ * - GenericJackson2JsonRedisSerializer stores human-readable JSON (not Java blobs),
+ *   enabling inspection with redis-cli and compatibility with non-Java consumers
+ * - disableCachingNullValues prevents a null response from poisoning the cache
+ * - transactionAware() ensures @CacheEvict participates in Spring transactions:
+ *   eviction is deferred until the transaction commits, preventing stale reads on rollback
+ * - Cache names as constants eliminate typo-based silent cache misses
  */
 @Configuration
+@EnableCaching
 public class CacheConfig {
 
     public static final String USERS_CACHE = "users";
+    public static final String USER_STATS_CACHE = "userStats";
 
     @Bean
-    public CacheManager cacheManager() {
-        CaffeineCacheManager manager = new CaffeineCacheManager(USERS_CACHE);
-        manager.setCaffeine(Caffeine.newBuilder()
-                .maximumSize(500)
-                .expireAfterWrite(10, TimeUnit.MINUTES)
-                .recordStats());
-        return manager;
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+        RedisCacheConfiguration base = RedisCacheConfiguration.defaultCacheConfig()
+                .serializeKeysWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                .disableCachingNullValues();
+
+        Map<String, RedisCacheConfiguration> perCacheTtls = Map.of(
+                USERS_CACHE,      base.entryTtl(Duration.ofMinutes(10)),
+                USER_STATS_CACHE, base.entryTtl(Duration.ofMinutes(5))
+        );
+
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(base.entryTtl(Duration.ofMinutes(10)))
+                .withInitialCacheConfigurations(perCacheTtls)
+                .transactionAware()
+                .build();
     }
 }

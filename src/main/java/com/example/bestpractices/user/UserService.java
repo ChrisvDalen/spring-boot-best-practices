@@ -1,10 +1,15 @@
 package com.example.bestpractices.user;
 
+import com.example.bestpractices.messaging.UserEvent;
+import com.example.bestpractices.messaging.UserEventType;
+import com.example.bestpractices.metrics.UserMetrics;
+import com.example.bestpractices.outbox.OutboxEventService;
 import com.example.bestpractices.user.dto.CreateUserRequest;
 import com.example.bestpractices.user.dto.UpdateUserRequest;
 import com.example.bestpractices.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -15,11 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Best practices demonstrated:
- * - @RequiredArgsConstructor for constructor injection (no @Autowired on fields)
- * - @Transactional(readOnly = true) as class default; override with readOnly = false on writes
- * - Service layer owns mapping from entity → DTO; controllers never touch entities
- * - Spring Cache annotations: @Cacheable, @CachePut, @CacheEvict
- * - Validate uniqueness before persisting, throw domain exception on conflict
+ * - Transactional Outbox: OutboxEventService.saveEvent() is called inside the same
+ *   @Transactional method as the domain write. Both rows commit or roll back atomically.
+ *   The OutboxEventProcessor then relays them to RabbitMQ asynchronously.
+ * - MDC.get("correlationId") threads the HTTP request's correlation ID through to the
+ *   event so consumers can join log lines from publisher and subscriber.
+ * - UserMetrics.timeUserFind() wraps the cache-miss DB path; cache hits are so fast
+ *   they do not need instrumentation.
+ * - @Cacheable / @CachePut / @CacheEvict now target the Redis-backed RedisCacheManager,
+ *   making the cache shared across all application instances.
  */
 @Slf4j
 @Service
@@ -27,7 +36,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class UserService {
 
+    private static final String AGGREGATE_TYPE = "User";
+
     private final UserRepository userRepository;
+    private final OutboxEventService outboxEventService;
+    private final UserMetrics userMetrics;
 
     public Page<UserResponse> findAllActive(Pageable pageable) {
         return userRepository.findAllActive(pageable).map(this::toResponse);
@@ -35,10 +48,12 @@ public class UserService {
 
     @Cacheable(value = "users", key = "#id")
     public UserResponse findById(Long id) {
-        log.debug("Fetching user {}", id);
-        return userRepository.findById(id)
-                .map(this::toResponse)
-                .orElseThrow(() -> new UserNotFoundException(id));
+        log.debug("Cache miss — fetching user {} from DB", id);
+        return userMetrics.timeUserFind(() ->
+                userRepository.findById(id)
+                        .map(this::toResponse)
+                        .orElseThrow(() -> new UserNotFoundException(id))
+        );
     }
 
     @Transactional
@@ -57,8 +72,14 @@ public class UserService {
         user.setLastName(request.getLastName());
 
         User saved = userRepository.save(user);
+        UserResponse response = toResponse(saved);
+
+        // Outbox write is inside this @Transactional — atomically paired with the user save
+        outboxEventService.saveEvent(AGGREGATE_TYPE, saved.getId(), UserEventType.CREATED,
+                UserEvent.of(UserEventType.CREATED, response, MDC.get("correlationId")));
+
         log.info("Created user id={} username={}", saved.getId(), saved.getUsername());
-        return toResponse(saved);
+        return response;
     }
 
     @Transactional
@@ -71,7 +92,12 @@ public class UserService {
         if (request.getLastName() != null) user.setLastName(request.getLastName());
         if (request.getActive() != null) user.setActive(request.getActive());
 
-        return toResponse(userRepository.save(user));
+        UserResponse response = toResponse(userRepository.save(user));
+
+        outboxEventService.saveEvent(AGGREGATE_TYPE, id, UserEventType.UPDATED,
+                UserEvent.of(UserEventType.UPDATED, response, MDC.get("correlationId")));
+
+        return response;
     }
 
     @Transactional
@@ -81,6 +107,10 @@ public class UserService {
             throw new UserNotFoundException(id);
         }
         userRepository.deleteById(id);
+
+        outboxEventService.saveEvent(AGGREGATE_TYPE, id, UserEventType.DELETED,
+                UserEvent.deleted(id, MDC.get("correlationId")));
+
         log.info("Deleted user id={}", id);
     }
 

@@ -1,36 +1,59 @@
 # Production profile — activate with: --spring.profiles.active=prod
-# Secrets (DB password, etc.) must be injected via environment variables, not hardcoded here.
+# Secrets must be injected via environment variables or a secrets manager.
 
 spring:
   datasource:
-    # Override these via environment variables:
-    # SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      # Size the pool to match your DB's max_connections minus headroom for admin tools
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
     hibernate:
-      # Never use create/create-drop in production; run Flyway or Liquibase migrations instead
       ddl-auto: validate
     show-sql: false
 
-  # Disable H2 console in production
   h2:
     console:
       enabled: false
 
+  flyway:
+    enabled: true
+    # Fail fast if migration checksums don't match — detect accidental script edits
+    validate-on-migrate: true
+
+  data:
+    redis:
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+
+  rabbitmq:
+    ssl:
+      enabled: ${RABBITMQ_SSL_ENABLED:false}
+
 management:
   endpoint:
     health:
-      # Hide implementation details from unauthenticated callers
       show-details: never
+      show-components: never
   endpoints:
     web:
       exposure:
-        include: health, info
+        # Expose only the endpoints needed by the observability stack
+        include: health, info, prometheus
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_RATE:0.05}
 
 logging:
   level:
     root: WARN
     com.example.bestpractices: INFO
+    org.springframework.amqp: WARN
