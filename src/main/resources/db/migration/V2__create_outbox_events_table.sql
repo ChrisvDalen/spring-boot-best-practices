@@ -15,8 +15,8 @@ CREATE TABLE outbox_events
     event_type     VARCHAR(50)  NOT NULL,
     payload        TEXT         NOT NULL,
     status         VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
-    created_at     TIMESTAMPTZ  NOT NULL,
-    processed_at   TIMESTAMPTZ,
+    created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
+    processed_at   TIMESTAMP WITH TIME ZONE,
     retry_count    INT          NOT NULL DEFAULT 0,
     error_message  VARCHAR(1000)
 );

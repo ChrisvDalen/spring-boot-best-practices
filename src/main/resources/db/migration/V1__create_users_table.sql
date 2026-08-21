@@ -3,7 +3,7 @@
 --   behind the JPA/validation layer — defence in depth
 -- - VARCHAR lengths match JPA @Column(length = N) definitions exactly
 -- - Indexes on frequently queried columns (username, email, active) avoid full-table scans
--- - TIMESTAMPTZ (timestamp with time zone) stores UTC instants; never loses timezone info
+-- - TIMESTAMP WITH TIME ZONE stores instants without losing offset information
 -- - Table named "users" avoids the reserved word "user" in most SQL dialects
 
 CREATE TABLE users
@@ -14,8 +14,8 @@ CREATE TABLE users
     first_name VARCHAR(100) NOT NULL,
     last_name  VARCHAR(100) NOT NULL,
     active     BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMPTZ  NOT NULL,
-    updated_at TIMESTAMPTZ  NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT uq_users_username UNIQUE (username),
     CONSTRAINT uq_users_email UNIQUE (email)
 );
