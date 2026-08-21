@@ -1,6 +1,7 @@
 package com.example.bestpractices.integration;
 
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
@@ -21,23 +22,24 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureTestRestTemplate
 public abstract class AbstractIntegrationTest {
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:16-alpine")
+            new PostgreSQLContainer<>("postgres:18-alpine")
                     .withDatabaseName("bestpractices_test")
                     .withUsername("test")
                     .withPassword("test");
 
     @Container
     static final RabbitMQContainer RABBIT =
-            new RabbitMQContainer("rabbitmq:3.13-management-alpine");
+            new RabbitMQContainer("rabbitmq:4.2-management-alpine");
 
     @Container
     @SuppressWarnings("resource")
     static final GenericContainer<?> REDIS =
-            new GenericContainer<>("redis:7-alpine")
+            new GenericContainer<>("redis:8.2-alpine")
                     .withExposedPorts(6379);
 
     @DynamicPropertySource

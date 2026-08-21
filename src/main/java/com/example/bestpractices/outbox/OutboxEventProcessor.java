@@ -3,7 +3,7 @@ package com.example.bestpractices.outbox;
 import com.example.bestpractices.messaging.UserEvent;
 import com.example.bestpractices.messaging.UserEventPublisher;
 import com.example.bestpractices.metrics.UserMetrics;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
