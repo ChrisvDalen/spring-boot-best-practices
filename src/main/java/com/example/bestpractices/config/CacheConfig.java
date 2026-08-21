@@ -1,5 +1,6 @@
 package com.example.bestpractices.config;
 
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,12 +34,13 @@ public class CacheConfig {
     public static final String USER_STATS_CACHE = "userStats";
 
     @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+    public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory,
+                                          ObjectMapper objectMapper) {
         RedisCacheConfiguration base = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJacksonJsonRedisSerializer()))
+                        .fromSerializer(new GenericJacksonJsonRedisSerializer(objectMapper)))
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> perCacheTtls = Map.of(
