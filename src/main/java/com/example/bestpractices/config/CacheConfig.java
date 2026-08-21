@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -18,7 +18,7 @@ import java.util.Map;
  * - Redis replaces Caffeine for distributed caching — cache is shared across all
  *   nodes in a horizontally scaled deployment; Caffeine is limited to a single JVM
  * - Per-cache TTLs: user data cached for 10 min, aggregates for 5 min
- * - GenericJackson2JsonRedisSerializer stores human-readable JSON (not Java blobs),
+ * - GenericJacksonJsonRedisSerializer stores human-readable JSON (not Java blobs),
  *   enabling inspection with redis-cli and compatibility with non-Java consumers
  * - disableCachingNullValues prevents a null response from poisoning the cache
  * - transactionAware() ensures @CacheEvict participates in Spring transactions:
@@ -38,7 +38,7 @@ public class CacheConfig {
                 .serializeKeysWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                        .fromSerializer(new GenericJacksonJsonRedisSerializer()))
                 .disableCachingNullValues();
 
         Map<String, RedisCacheConfiguration> perCacheTtls = Map.of(

@@ -15,6 +15,8 @@ cd spring-boot-best-practices
 - H2 console: `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:bestpractices`)
 - Actuator: `http://localhost:8080/actuator/health`
 
+Requires Java 25. The Maven wrapper downloads Maven 3.9.16 automatically.
+
 ## Best-Practice Index
 
 | # | Subject | Key files |

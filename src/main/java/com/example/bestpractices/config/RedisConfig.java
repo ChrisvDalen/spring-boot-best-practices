@@ -1,12 +1,12 @@
 package com.example.bestpractices.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
@@ -28,7 +28,7 @@ public class RedisConfig {
         template.setConnectionFactory(factory);
 
         var keySerializer = new StringRedisSerializer();
-        var valueSerializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
+        var valueSerializer = new JacksonJsonRedisSerializer<>(objectMapper, Object.class);
 
         template.setKeySerializer(keySerializer);
         template.setValueSerializer(valueSerializer);

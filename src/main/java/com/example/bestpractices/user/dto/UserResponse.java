@@ -11,7 +11,7 @@ import java.time.Instant;
  * - @Value + @Builder makes the response immutable and easy to construct
  * - @Jacksonized generates @JsonDeserialize(builder=...) + @JsonPOJOBuilder(withPrefix="")
  *   on the Lombok-generated builder, enabling Jackson to deserialise this immutable class
- *   — required for Redis cache which serialises values as JSON via GenericJackson2JsonRedisSerializer
+ *   — required for Redis cache which serialises values as JSON via GenericJacksonJsonRedisSerializer
  * - Expose only what the API consumer needs — omit sensitive or internal fields
  * - Use Instant for timestamps; clients can format them in their own timezone
  */

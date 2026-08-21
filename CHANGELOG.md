@@ -6,6 +6,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Upgrade to Java 25 and Spring Boot 4.1
+- Upgrade Springdoc, Resilience4j, Testcontainers, and container images
+- Add reproducible Maven wrapper, CI verification, and Dependabot updates
+
 ### Added
 - Initial project scaffold with Spring Boot 3.2 and Java 21
 - User CRUD REST API (`/api/v1/users`) with pagination

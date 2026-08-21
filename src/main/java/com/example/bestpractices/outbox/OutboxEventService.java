@@ -2,8 +2,8 @@ package com.example.bestpractices.outbox;
 
 import com.example.bestpractices.messaging.UserEvent;
 import com.example.bestpractices.messaging.UserEventType;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -31,7 +31,7 @@ public class OutboxEventService {
         try {
             String payload = objectMapper.writeValueAsString(event);
             repository.save(OutboxEvent.create(aggregateType, aggregateId, eventType, payload));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialise outbox event payload", e);
         }
     }
