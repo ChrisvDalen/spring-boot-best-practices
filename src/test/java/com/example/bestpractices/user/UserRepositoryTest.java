@@ -2,7 +2,8 @@ package com.example.bestpractices.user;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,9 +19,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - Test custom repository methods (@Query, derived finders) — JPA generates the SQL so test it
  * - Verify uniqueness constraints by checking existsBy* before testing save conflicts
  */
+// Keep the app's H2 URL (MODE=PostgreSQL) so the Postgres-flavoured Flyway migrations run
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @DataJpaTest
 @Import(com.example.bestpractices.config.JpaConfig.class)
 class UserRepositoryTest {
+
+    // @EnableCaching on the application class needs a CacheManager; slices no longer provide one in Boot 4
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private org.springframework.cache.CacheManager cacheManager;
 
     @Autowired
     private UserRepository userRepository;

@@ -6,8 +6,8 @@ import com.example.bestpractices.user.dto.UserResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Best practices demonstrated:
  * - @WebMvcTest is a slice test: only the web layer is loaded (fast, no DB or full context)
- * - @MockBean replaces the real service/filter dependencies in the Spring context; the
+ * - @MockitoBean replaces the real service/filter dependencies in the Spring context; the
  *   IdempotencyService mock is required because IdempotencyFilter is a @Component that
  *   @WebMvcTest picks up and tries to wire
  * - @Import(SecurityConfig.class) tests with the real security rules
@@ -45,11 +45,15 @@ class UserControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private UserService userService;
 
+    // @WebMvcTest no longer provides a CacheManager in Boot 4; the cached beans need one
+    @MockitoBean
+    private org.springframework.cache.CacheManager cacheManager;
+
     // IdempotencyFilter is a @Component loaded by @WebMvcTest; it needs this mock
-    @MockBean
+    @MockitoBean
     private IdempotencyService idempotencyService;
 
     private UserResponse sampleResponse() {
